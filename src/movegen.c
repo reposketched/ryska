@@ -8,9 +8,10 @@ static inline int is_valid_destination(Square from, Square to, int delta) {
     
     // For diagonal and horizontal moves, check file distance
     if (delta == 9 || delta == 7 || delta == -7 || delta == -9) {
-        // Diagonal moves: file distance must be exactly 1
+        // Diagonal moves: file and rank differences must be equal
         int file_diff = abs((int)file_of(to) - (int)file_of(from));
-        return file_diff == 1;
+        int rank_diff = abs((int)rank_of(to) - (int)rank_of(from));
+        return file_diff == rank_diff;
     } else if (delta == 1 || delta == -1) {
         // Horizontal moves: must stay on same rank
         return rank_of(to) == rank_of(from);

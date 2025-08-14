@@ -179,6 +179,7 @@ void uci_position(const char* command) {
         char* move_str = strtok(moves_copy, " ");
         while (move_str) {
             Move move = parse_move(move_str);
+            
             // Validate parsed move against generated legal moves
             Move legals[256];
             int legal_count = generate_moves(&current_board, legals);
@@ -186,11 +187,13 @@ void uci_position(const char* command) {
             for (int i = 0; i < legal_count; i++) {
                 if (move_equal(move, legals[i]) && is_legal_move(&current_board, legals[i])) { ok = 1; break; }
             }
+            
             if (ok && !move_equal(move, NULL_MOVE)) {
                 board_make_move(&current_board, move);
             }
             move_str = strtok(NULL, " ");
         }
+        // Optional debug removed for performance
     } else {
         last_moves_string[0] = '\0';
     }
