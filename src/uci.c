@@ -6,6 +6,7 @@
 #include "book.h"
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include "board.h"

@@ -109,10 +109,10 @@ void init_bitboards(void) {
     for (Square sq = A1; sq < SQUARE_COUNT; sq++) {
         Bitboard bb = square_bb[sq];
         knight_attacks[sq] = 
-            shift_northeast(shift_northeast(bb)) | shift_northwest(shift_northwest(bb)) |
-            shift_southeast(shift_southeast(bb)) | shift_southwest(shift_southwest(bb)) |
-            shift_northeast(shift_east(bb)) | shift_northwest(shift_west(bb)) |
-            shift_southeast(shift_east(bb)) | shift_southwest(shift_west(bb));
+            shift_north(shift_northeast(bb)) | shift_north(shift_northwest(bb)) |  // 2 up, 1 left/right
+            shift_south(shift_southeast(bb)) | shift_south(shift_southwest(bb)) |  // 2 down, 1 left/right
+            shift_east(shift_northeast(bb)) | shift_east(shift_southeast(bb)) |    // 2 right, 1 up/down
+            shift_west(shift_northwest(bb)) | shift_west(shift_southwest(bb));     // 2 left, 1 up/down
     }
 
     // Initialize king attacks

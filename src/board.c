@@ -315,7 +315,8 @@ int board_is_square_attacked(const Board* board, Square sq, Color by_color) {
         int to = (int)sq + diag_deltas[d];
         while (to >= 0 && to < 64) {
             int prev = to - diag_deltas[d];
-            if (abs(file_of((Square)to) - file_of((Square)prev)) != 1) break;
+            int file_diff = (int)file_of((Square)to) - (int)file_of((Square)prev);
+            if (file_diff != 1 && file_diff != -1) break;
             if (test_bit(occupied, (Square)to)) {
                 if (test_bit(board->pieces[by_color][BISHOP], (Square)to) ||
                     test_bit(board->pieces[by_color][QUEEN], (Square)to)) {
@@ -333,7 +334,8 @@ int board_is_square_attacked(const Board* board, Square sq, Color by_color) {
         while (to >= 0 && to < 64) {
             if (d >= 2) {
                 int prev = to - ortho_deltas[d];
-                if (abs(file_of((Square)to) - file_of((Square)prev)) != 1) break;
+                int file_diff = (int)file_of((Square)to) - (int)file_of((Square)prev);
+                if (file_diff != 1 && file_diff != -1) break;
             }
             if (test_bit(occupied, (Square)to)) {
                 if (test_bit(board->pieces[by_color][ROOK], (Square)to) ||

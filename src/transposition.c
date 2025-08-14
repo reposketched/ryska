@@ -1,4 +1,6 @@
 #include "transposition.h"
+#include <stddef.h>
+#include <string.h>
 
 static TTEntry tt_table[TT_SIZE];
 static uint8_t tt_age_counter = 0;

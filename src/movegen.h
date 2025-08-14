@@ -7,6 +7,7 @@
 
 // Move generation functions
 int generate_moves(const Board* board, Move* moves);
+int generate_legal_moves(const Board* board, Move* moves);
 int generate_pawn_moves(const Board* board, Move* moves, int* count);
 int generate_knight_moves(const Board* board, Move* moves, int* count);
 int generate_bishop_moves(const Board* board, Move* moves, int* count);
