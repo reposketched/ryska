@@ -114,18 +114,8 @@ int alpha_beta_search(const Board* board, int depth, int alpha, int beta, int* n
         return 0;
     }
     
-    // Transposition table lookup (disabled for debugging)
-    uint64_t hash = generate_hash(board);
-    // TTEntry* tt_entry = tt_probe(hash);
-    // if (tt_entry && tt_entry->depth >= depth) {
-    //     if (tt_entry->flag == TT_EXACT) {
-    //         return tt_entry->score;
-    //     } else if (tt_entry->flag == TT_ALPHA && tt_entry->score <= alpha) {
-    //         return alpha;
-    //     } else if (tt_entry->flag == TT_BETA && tt_entry->score >= beta) {
-    //         return beta;
-    //     }
-    // }
+    // Transposition table disabled for stability
+    // uint64_t hash = generate_hash(board);
     
     // Quiescence search at leaf nodes
     if (depth <= 0) {
@@ -174,7 +164,7 @@ int alpha_beta_search(const Board* board, int depth, int alpha, int beta, int* n
         }
     }
     
-    // Store in transposition table (disabled for debugging)
+    // Transposition table disabled for stability
     // tt_store(hash, best_move, best_score, depth, tt_flag);
     
     return best_score;
