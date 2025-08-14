@@ -261,27 +261,25 @@ void uci_go(const char* command) {
         // TODO: add time, nps, pv, etc.
         if (movetime > 0 && d * 100 > movetime) break; // crude time control
     }
-    // Check if the move is legal
+    // Check if the move is legal (our movegen only returns legal moves)
     Move legal_moves[256];
     int legal_count = generate_moves(&current_board, legal_moves);
-    // Pick the PV move if legal; otherwise fall back to first legal
+    // Pick the PV move if it exists in the legal move list
     int found = 0;
     for (int i = 0; i < legal_count; i++) {
-        if (move_equal(result.best_move, legal_moves[i]) && is_legal_move(&current_board, legal_moves[i])) { found = 1; break; }
+        if (move_equal(result.best_move, legal_moves[i])) { found = 1; break; }
     }
     if (found) {
         // Final evaluation string
         printf("info string finaleval %+.2f\n", result.score / 100.0);
         printf("bestmove "); print_move(result.best_move); printf("\n"); fflush(stdout);
     } else {
-        // Fallback: output first legal move if any
-        for (int i = 0; i < legal_count; i++) {
-            if (is_legal_move(&current_board, legal_moves[i])) {
-                int cp = evaluate_position(&current_board);
-                printf("info string finaleval %+.2f\n", cp / 100.0);
-                printf("bestmove "); print_move(legal_moves[i]); printf("\n"); fflush(stdout);
-                return;
-            }
+        // Fallback: output first legal move if any (all moves from generate_moves are legal)
+        if (legal_count > 0) {
+            int cp = evaluate_position(&current_board);
+            printf("info string finaleval %+.2f\n", cp / 100.0);
+            printf("bestmove "); print_move(legal_moves[0]); printf("\n"); fflush(stdout);
+            return;
         }
         printf("bestmove 0000\n"); fflush(stdout);
     }
