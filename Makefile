@@ -48,4 +48,4 @@ test: $(TARGET)
 	echo "position startpos" | ./$(TARGET)
 	echo "go depth 4" | ./$(TARGET)
 
-.PHONY: all clean install uninstall run test 
+.PHONY: all clean install uninstall run test

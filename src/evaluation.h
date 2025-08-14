@@ -25,12 +25,6 @@ int evaluate_position(const Board* board);
 
 // Evaluation components
 int evaluate_material(const Board* board);
-int evaluate_positional(const Board* board);
-int evaluate_mobility(const Board* board);
-int evaluate_pawn_structure(const Board* board);
-int evaluate_king_safety(const Board* board);
-int evaluate_bishop_pair(const Board* board);
-int evaluate_rook_position(const Board* board);
 
 // Initialize evaluation tables
 void init_evaluation_tables(void);

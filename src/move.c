@@ -46,7 +46,13 @@ int is_double_pawn_push(Move move) {
 
 PieceType promotion_piece(Move move) {
     if (!is_promotion(move)) return PAWN;
-    return (PieceType)((move_flags(move) & 0x03) + 1); // KNIGHT=1, BISHOP=2, ROOK=3, QUEEN=4
+    // Lower two bits encode: 0=n,1=b,2=r,3=q
+    switch (move_flags(move) & 0x03) {
+        case 0: return KNIGHT;
+        case 1: return BISHOP;
+        case 2: return ROOK;
+        default: return QUEEN;
+    }
 }
 
 // Move comparison

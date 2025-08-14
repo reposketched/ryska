@@ -1,0 +1,5 @@
+# Human-editable opening book
+# Format: "<moves> -> <bestmove> # weight"
+ - # 100
+e2e4 - # 90
+e2e4 e7e5 - # 80

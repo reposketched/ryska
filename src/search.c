@@ -6,7 +6,7 @@
 // Global search state
 static int search_start_time;
 static int search_stop_time;
-static int history_table[2][6][64];
+int history_table[2][6][64];
 
 // Search the position to the given depth
 SearchResult search_position(const Board* board, int depth) {
@@ -19,9 +19,15 @@ SearchResult search_position(const Board* board, int depth) {
     
     if (depth <= 0) return result;
     
-    // Generate all legal moves
+    // Generate all moves
     Move moves[MAX_MOVES];
     int move_count = generate_moves(board, moves);
+    // Filter to legal moves
+    int legal_count = 0;
+    for (int i = 0; i < move_count; i++) {
+        if (is_legal_move(board, moves[i])) moves[legal_count++] = moves[i];
+    }
+    move_count = legal_count;
     
     if (move_count == 0) {
         // Checkmate or stalemate
@@ -100,7 +106,7 @@ SearchResult iterative_deepening(const Board* board, int max_depth, const TimeCo
 
 // Alpha-beta search with advanced pruning
 int alpha_beta_search(const Board* board, int depth, int alpha, int beta, int* nodes) {
-    (*nodes)++;
+    if (nodes) (*nodes)++;
     
     // Check for terminal positions
     if (board_is_checkmate(board)) {
@@ -156,6 +162,12 @@ int alpha_beta_search(const Board* board, int depth, int alpha, int beta, int* n
     // Generate moves
     Move moves[MAX_MOVES];
     int move_count = generate_moves(board, moves);
+    // Filter illegal moves
+    int legal_count = 0;
+    for (int i = 0; i < move_count; i++) {
+        if (is_legal_move(board, moves[i])) moves[legal_count++] = moves[i];
+    }
+    move_count = legal_count;
     
     if (move_count == 0) {
         if (board_is_check(board)) {
@@ -235,7 +247,8 @@ int razor_pruning(const Board* board, int depth, int alpha, int beta) {
                 Board temp_board = *board;
                 board_make_move(&temp_board, moves[i]);
                 
-                int score = -alpha_beta_search(&temp_board, depth - 1, -beta, -alpha, NULL);
+                int dummy_nodes = 0; // local counter to avoid undeclared 'nodes'
+                int score = -alpha_beta_search(&temp_board, depth - 1, -beta, -alpha, &dummy_nodes);
                 if (score > best_score) {
                     best_score = score;
                 }
@@ -252,7 +265,7 @@ int razor_pruning(const Board* board, int depth, int alpha, int beta) {
 
 // Quiescence search (captures only)
 int quiescence_search(const Board* board, int alpha, int beta, int* nodes) {
-    (*nodes)++;
+    if (nodes) (*nodes)++;
     
     int stand_pat = evaluate_position(board);
     
@@ -268,10 +281,10 @@ int quiescence_search(const Board* board, int alpha, int beta, int* nodes) {
     Move moves[MAX_MOVES];
     int move_count = generate_moves(board, moves);
     
-    // Filter to captures only
+    // Filter to legal captures only
     int capture_count = 0;
     for (int i = 0; i < move_count; i++) {
-        if (is_capture(moves[i])) {
+        if (is_capture(moves[i]) && is_legal_move(board, moves[i])) {
             moves[capture_count++] = moves[i];
         }
     }
@@ -350,34 +363,103 @@ void order_moves(const Board* board, Move* moves, int count) {
 
 // Get move score for ordering (MVV-LVA)
 int get_move_score(const Board* board, Move move) {
-    if (!is_capture(move)) return 0;
-    
     Square from = move_from(move);
     Square to = move_to(move);
-    
-    // Find attacker piece
-    PieceType attacker = PAWN;
+
+    // Determine moving piece
+    PieceType piece = PAWN;
     for (PieceType pt = PAWN; pt < PIECE_COUNT; pt++) {
         if (test_bit(board->pieces[board->side_to_move][pt], from)) {
-            attacker = pt;
+            piece = pt;
             break;
         }
     }
-    
-    // Find victim piece
-    PieceType victim = PAWN;
-    for (PieceType pt = PAWN; pt < PIECE_COUNT; pt++) {
-        if (test_bit(board->pieces[color_opposite(board->side_to_move)][pt], to)) {
-            victim = pt;
-            break;
+
+    // Captures: MVV-LVA
+    if (is_capture(move)) {
+        PieceType victim = PAWN;
+        for (PieceType pt = PAWN; pt < PIECE_COUNT; pt++) {
+            if (test_bit(board->pieces[color_opposite(board->side_to_move)][pt], to)) {
+                victim = pt;
+                break;
+            }
         }
+        int victim_values[] = {PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE};
+        int attacker_values[] = {PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE};
+        return 6 * victim_values[victim] - attacker_values[piece];
     }
-    
-    // MVV-LVA: 6 * victim_value - attacker_value
-    int victim_values[] = {PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE};
-    int attacker_values[] = {PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE};
-    
-    return 6 * victim_values[victim] - attacker_values[attacker];
+
+    // Quiet move ordering heuristics
+    int score = 0;
+
+    // Castling highly preferred
+    if (is_castle(move)) {
+        score += 800;
+    }
+
+    // Promotions (should be rare in quiet set, but handle anyway)
+    if (is_promotion(move)) {
+        PieceType promo = promotion_piece(move);
+        score += 10000;
+        if (promo == QUEEN) score += 300;
+        else if (promo == ROOK) score += 200;
+        else if (promo == KNIGHT) score += 150;
+        else if (promo == BISHOP) score += 100;
+        return score;
+    }
+
+    // Encourage central pawn pushes and development
+    File to_file = file_of(to);
+    Rank to_rank = rank_of(to);
+    Rank from_rank = rank_of(from);
+
+    if (piece == PAWN) {
+        // Prefer central files for pawn advances
+        if (to_file == FILE_D || to_file == FILE_E) score += 200;
+        if (to_file == FILE_C || to_file == FILE_F) score += 120;
+        if (to_file == FILE_A || to_file == FILE_H) score -= 50;
+        // Prefer advancing to 4th rank (white) or 5th (black)
+        if ((board->side_to_move == WHITE && to_rank == RANK_4) ||
+            (board->side_to_move == BLACK && to_rank == RANK_5)) {
+            score += 180;
+        }
+        // Double pawn push gets small bonus
+        if (is_double_pawn_push(move)) score += 60;
+    } else if (piece == KNIGHT) {
+        // Knights to c3/f3 (or c6/f6)
+        if ((to == C3) || (to == F3) || (to == C6) || (to == F6)) score += 220;
+        // Knights toward center
+        if (to_file >= FILE_C && to_file <= FILE_F && to_rank >= RANK_3 && to_rank <= RANK_6) score += 140;
+        // Development off back rank
+        if ((board->side_to_move == WHITE && from_rank == RANK_1) || (board->side_to_move == BLACK && from_rank == RANK_8)) score += 80;
+    } else if (piece == BISHOP) {
+        // Develop bishops off back rank
+        if ((board->side_to_move == WHITE && from_rank == RANK_1) || (board->side_to_move == BLACK && from_rank == RANK_8)) score += 90;
+        // Slight center preference
+        if (to_file >= FILE_C && to_file <= FILE_F) score += 40;
+    } else if (piece == ROOK) {
+        // Avoid early rook moves unless to open files
+        if (to_file == FILE_A || to_file == FILE_H) score -= 20;
+    } else if (piece == KING) {
+        // Non-castle king moves discouraged
+        score -= 100;
+    }
+
+    // Add a small PST delta to refine quiet ordering
+    switch (piece) {
+        case PAWN:   score += pawn_table[to]   - pawn_table[from];   break;
+        case KNIGHT: score += knight_table[to] - knight_table[from]; break;
+        case BISHOP: score += bishop_table[to] - bishop_table[from]; break;
+        case ROOK:   score += rook_table[to]   - rook_table[from];   break;
+        case QUEEN:  score += queen_table[to]  - queen_table[from];  break;
+        case KING:   score += king_table[to]   - king_table[from];   break;
+        default: break;
+    }
+
+    // Include history heuristic for quiet moves
+    score += history_table[board->side_to_move][piece][from];
+
+    return score;
 }
 
 // Update history heuristic
