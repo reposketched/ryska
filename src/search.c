@@ -17,17 +17,14 @@ SearchResult search_position(const Board* board, int depth) {
     result.nodes = 0;
     result.time_ms = 0;
     
-    if (depth <= 0) return result;
+    if (depth <= 0) {
+        result.score = evaluate_position(board);
+        return result;
+    }
     
-    // Generate all moves
+    // Generate all legal moves (our new movegen only returns legal moves)
     Move moves[MAX_MOVES];
     int move_count = generate_moves(board, moves);
-    // Filter to legal moves
-    int legal_count = 0;
-    for (int i = 0; i < move_count; i++) {
-        if (is_legal_move(board, moves[i])) moves[legal_count++] = moves[i];
-    }
-    move_count = legal_count;
     
     if (move_count == 0) {
         // Checkmate or stalemate
@@ -97,7 +94,7 @@ SearchResult iterative_deepening(const Board* board, int max_depth, const TimeCo
         result.depth = depth;
         
         // Print info
-        printf("info depth %d score %d nodes %d\n", 
+        printf("info depth %d score cp %d nodes %d\n", 
                depth, result.score, result.nodes);
     }
     
@@ -117,57 +114,27 @@ int alpha_beta_search(const Board* board, int depth, int alpha, int beta, int* n
         return 0;
     }
     
-    // Transposition table lookup
+    // Transposition table lookup (disabled for debugging)
     uint64_t hash = generate_hash(board);
-    TTEntry* tt_entry = tt_probe(hash);
-    if (tt_entry && tt_entry->depth >= depth) {
-        if (tt_entry->flag == TT_EXACT) {
-            return tt_entry->score;
-        } else if (tt_entry->flag == TT_ALPHA && tt_entry->score <= alpha) {
-            return alpha;
-        } else if (tt_entry->flag == TT_BETA && tt_entry->score >= beta) {
-            return beta;
-        }
-    }
-    
-    // Null move pruning
-    if (depth >= NULL_MOVE_R && !board_is_check(board)) {
-        int null_score = null_move_search(board, depth - NULL_MOVE_R, alpha, beta, nodes);
-        if (null_score >= beta) {
-            return beta;
-        }
-    }
-    
-    // Futility pruning
-    if (depth <= 3 && !board_is_check(board)) {
-        int futility_score = futility_pruning(board, depth, alpha, beta);
-        if (futility_score != 0) {
-            return futility_score;
-        }
-    }
-    
-    // Razor pruning
-    if (depth <= 2 && !board_is_check(board)) {
-        int razor_score = razor_pruning(board, depth, alpha, beta);
-        if (razor_score != 0) {
-            return razor_score;
-        }
-    }
+    // TTEntry* tt_entry = tt_probe(hash);
+    // if (tt_entry && tt_entry->depth >= depth) {
+    //     if (tt_entry->flag == TT_EXACT) {
+    //         return tt_entry->score;
+    //     } else if (tt_entry->flag == TT_ALPHA && tt_entry->score <= alpha) {
+    //         return alpha;
+    //     } else if (tt_entry->flag == TT_BETA && tt_entry->score >= beta) {
+    //         return beta;
+    //     }
+    // }
     
     // Quiescence search at leaf nodes
     if (depth <= 0) {
         return quiescence_search(board, alpha, beta, nodes);
     }
     
-    // Generate moves
+    // Generate legal moves (no need to filter - our movegen only returns legal moves)
     Move moves[MAX_MOVES];
     int move_count = generate_moves(board, moves);
-    // Filter illegal moves
-    int legal_count = 0;
-    for (int i = 0; i < move_count; i++) {
-        if (is_legal_move(board, moves[i])) moves[legal_count++] = moves[i];
-    }
-    move_count = legal_count;
     
     if (move_count == 0) {
         if (board_is_check(board)) {
@@ -207,8 +174,8 @@ int alpha_beta_search(const Board* board, int depth, int alpha, int beta, int* n
         }
     }
     
-    // Store in transposition table
-    tt_store(hash, best_move, best_score, depth, tt_flag);
+    // Store in transposition table (disabled for debugging)
+    // tt_store(hash, best_move, best_score, depth, tt_flag);
     
     return best_score;
 }
@@ -277,14 +244,14 @@ int quiescence_search(const Board* board, int alpha, int beta, int* nodes) {
         alpha = stand_pat;
     }
     
-    // Generate only captures
+    // Generate only captures (our movegen returns only legal moves)
     Move moves[MAX_MOVES];
     int move_count = generate_moves(board, moves);
     
-    // Filter to legal captures only
+    // Filter to captures only (no need to check legality again)
     int capture_count = 0;
     for (int i = 0; i < move_count; i++) {
-        if (is_capture(moves[i]) && is_legal_move(board, moves[i])) {
+        if (is_capture(moves[i])) {
             moves[capture_count++] = moves[i];
         }
     }
