@@ -3,6 +3,8 @@
 #include "src/movegen.h"
 #include "src/bitboard.h"
 #include "src/uci.h"
+#include "src/search.h"
+#include "src/evaluation.h"
 
 void print_board_state(const Board* board) {
     printf("Board state:\n");
@@ -30,18 +32,19 @@ void print_board_state(const Board* board) {
 
 void test_game_position() {
     init_bitboards();
+    init_evaluation_tables();
     
     Board board;
     board_init(&board);
     
     printf("=== Testing Game Position ===\n");
     
-    // Reproduce the game moves up to the illegal move
+    // Reproduce the game moves up to and INCLUDING the user's Bb5
     const char* moves[] = {
         "d2d4", "b8c6", "d4d5", "g8f6", "d5c6", "b7c6",
         "b1c3", "d7d5", "e2e4", "d5e4", "c3e4", "d8d1",
         "e1d1", "f6e4", "f2f3", "e7e5", "f3e4", "f7f5",
-        "e4f5", "c6c5", "f5f6", "g7f6"
+        "e4f5", "c6c5", "f5f6", "g7f6", "c1b5"  // Added the user's move Bb5
     };
     
     int num_moves = sizeof(moves) / sizeof(moves[0]);
@@ -66,11 +69,11 @@ void test_game_position() {
         printf("Move applied successfully\n");
     }
     
-    printf("\n=== Final Position ===\n");
+    printf("\n=== Position after Bb5 ===\n");
     print_board_state(&board);
     
-    // Now generate moves for white (who should play move 12)
-    printf("\n=== Legal moves for WHITE ===\n");
+    // Now it's BLACK's turn - let's see what the engine wants to play
+    printf("\n=== Legal moves for BLACK ===\n");
     Move legal_moves[256];
     int move_count = generate_moves(&board, legal_moves);
     
@@ -82,28 +85,40 @@ void test_game_position() {
                'a' + file_of(from), rank_of(from) + 1,
                'a' + file_of(to), rank_of(to) + 1);
         
-        if (from == C1 && to == B5) {
-            printf(" <- This would be Bb5 (the illegal move!)");
+        if (is_capture(legal_moves[i])) {
+            printf(" (capture)");
         }
         printf("\n");
     }
     
-    // Check specifically if Bb5 is in the legal moves
-    Move bb5 = make_move(C1, B5, QUIET);
-    int bb5_legal = 0;
-    for (int i = 0; i < move_count; i++) {
-        if (move_equal(legal_moves[i], bb5)) {
-            bb5_legal = 1;
-            break;
+    // Let's see what the search wants to play
+    printf("\n=== Search Result ===\n");
+    SearchResult result = search_position(&board, 6);
+    printf("Best move from search: ");
+    if (result.best_move.data != 0) {
+        Square from = move_from(result.best_move);
+        Square to = move_to(result.best_move);
+        printf("%c%d-%c%d", 
+               'a' + file_of(from), rank_of(from) + 1,
+               'a' + file_of(to), rank_of(to) + 1);
+        
+        // Check if this move is actually legal
+        int is_legal = is_legal_move(&board, result.best_move);
+        printf(" (Legal: %s)", is_legal ? "YES" : "NO");
+        
+        // Check if it's in our legal moves list
+        int in_list = 0;
+        for (int i = 0; i < move_count; i++) {
+            if (move_equal(legal_moves[i], result.best_move)) {
+                in_list = 1;
+                break;
+            }
         }
+        printf(" (In legal list: %s)", in_list ? "YES" : "NO");
+        printf("\n");
+    } else {
+        printf("NULL_MOVE\n");
     }
-    
-    printf("\nBb5 (c1-b5) is %s in the legal move list\n", bb5_legal ? "INCLUDED" : "NOT INCLUDED");
-    
-    // Check if there's a white bishop on c1
-    printf("White bishop on c1: %s\n", (board.pieces[WHITE][BISHOP] & (1ULL << C1)) ? "YES" : "NO");
-    printf("Square c1 occupied: %s\n", (board.occupied & (1ULL << C1)) ? "YES" : "NO");
-    printf("Square b5 occupied: %s\n", (board.occupied & (1ULL << B5)) ? "YES" : "NO");
 }
 
 int main() {
