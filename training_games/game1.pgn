@@ -1,0 +1,24 @@
+[Event "Computer chess game"]
+[Site "SOORYA-PC"]
+[Date "2025.08.12"]
+[Round "?"]
+[White "Chess_engine"]
+[Black "Sooryashankar Joy"]
+[Result "0-1"]
+[BlackElo "2400"]
+[ECO "A00"]
+[Opening "Ware (Meadow Hay) Opening"]
+[Time "16:03:36"]
+[WhiteElo "2000"]
+[TimeControl "0+1"]
+[Termination "rules infraction"]
+[PlyCount "20"]
+[WhiteType "program"]
+[BlackType "human"]
+
+1. a4 {(a2-a4) 0.00/6} e5 2. b4 {(b2-b4) 0.00/6} d5 3. c4 {(c2-c4) 0.00/6}
+Nf6 4. cxd5 {(c4xd5) 0.00/6 0} Nxd5 5. d4 {(d2-d4) 0.00/6 0} Nc6 6. dxe5
+{(d4xe5) 0.00/6} Be6 7. Qxd5 {(Qd1xd5) 0.00/6 0} Qxd5 8. e4 {(e2-e4)
+0.00/6} Qxe4+ 9. Ne2 {(f2-f4) 0.00/6} Qxb4+ 10. Nd2 {(f2-f4) 0.00/6 0}
+O-O-O {Arena Adjudication. Illegal move!} 0-1
+

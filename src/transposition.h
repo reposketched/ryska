@@ -28,5 +28,6 @@ void tt_clear(void);
 void tt_store(uint64_t key, Move best_move, int score, int depth, TTFlag flag);
 TTEntry* tt_probe(uint64_t key);
 void tt_age(void);
+uint64_t generate_hash(const Board* board);
 
 #endif // TRANSPOSITION_H 

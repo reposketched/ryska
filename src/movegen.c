@@ -1,7 +1,7 @@
 #include "movegen.h"
 #include "bitboard.h"
 
-// Generate all legal moves for the current position
+// Generate all pseudo-legal moves for the current position
 int generate_moves(const Board* board, Move* moves) {
     int count = 0;
     
@@ -54,9 +54,11 @@ int generate_pawn_moves(const Board* board, Move* moves, int* count) {
             Square to = pop_lsb(&pushes);
             if ((color == WHITE && rank_of(to) == RANK_8) || 
                 (color == BLACK && rank_of(to) == RANK_1)) {
-                // Promotions
-                moves[*count] = make_move(from, to, PROMOTION);
-                (*count)++;
+                // Generate 4 promotion piece choices
+                for (int pc = 0; pc < 4; pc++) {
+                    moves[*count] = make_move(from, to, (uint8_t)(PROMOTION | pc));
+                    (*count)++;
+                }
             } else {
                 moves[*count] = make_move(from, to, QUIET);
                 (*count)++;
@@ -68,9 +70,10 @@ int generate_pawn_moves(const Board* board, Move* moves, int* count) {
             Square to = pop_lsb(&attacks);
             if ((color == WHITE && rank_of(to) == RANK_8) || 
                 (color == BLACK && rank_of(to) == RANK_1)) {
-                // Promotion captures
-                moves[*count] = make_move(from, to, PROMOTION_CAPTURE);
-                (*count)++;
+                for (int pc = 0; pc < 4; pc++) {
+                    moves[*count] = make_move(from, to, (uint8_t)(PROMOTION_CAPTURE | pc));
+                    (*count)++;
+                }
             } else {
                 moves[*count] = make_move(from, to, CAPTURE);
                 (*count)++;
@@ -112,77 +115,92 @@ int generate_knight_moves(const Board* board, Move* moves, int* count) {
     return *count;
 }
 
-// Generate bishop moves (simplified - would need proper ray generation)
+// Generate bishop moves (sliding along diagonals)
 int generate_bishop_moves(const Board* board, Move* moves, int* count) {
     Color color = board->side_to_move;
     Bitboard bishops = board->pieces[color][BISHOP];
-    Bitboard empty = board->empty;
     Bitboard enemies = board_get_all_pieces(board, color_opposite(color));
+    Bitboard own = board_get_all_pieces(board, color);
     
     while (bishops) {
         Square from = pop_lsb(&bishops);
-        // Simplified bishop moves - just diagonal attacks
-        Bitboard attacks = (shift_northeast(square_bb[from]) | shift_northwest(square_bb[from]) |
-                          shift_southeast(square_bb[from]) | shift_southwest(square_bb[from])) & 
-                          (empty | enemies);
-        
-        while (attacks) {
-            Square to = pop_lsb(&attacks);
-            uint8_t flags = test_bit(enemies, to) ? CAPTURE : QUIET;
-            moves[*count] = make_move(from, to, flags);
-            (*count)++;
+        int deltas[4] = { 9, 7, -7, -9 };
+        for (int d = 0; d < 4; d++) {
+            int to = (int)from + deltas[d];
+            while (to >= 0 && to < 64) {
+                int prev = to - deltas[d];
+                int file_diff = (int)file_of((Square)to) - (int)file_of((Square)prev);
+                if (file_diff != 1 && file_diff != -1) break;
+                if (test_bit(own, (Square)to)) break;
+                uint8_t flags = test_bit(enemies, (Square)to) ? CAPTURE : QUIET;
+                moves[*count] = make_move(from, (Square)to, flags);
+                (*count)++;
+                if (flags == CAPTURE) break;
+                to += deltas[d];
+            }
         }
     }
     
     return *count;
 }
 
-// Generate rook moves (simplified - would need proper ray generation)
+// Generate rook moves (sliding along ranks/files)
 int generate_rook_moves(const Board* board, Move* moves, int* count) {
     Color color = board->side_to_move;
     Bitboard rooks = board->pieces[color][ROOK];
-    Bitboard empty = board->empty;
     Bitboard enemies = board_get_all_pieces(board, color_opposite(color));
+    Bitboard own = board_get_all_pieces(board, color);
     
     while (rooks) {
         Square from = pop_lsb(&rooks);
-        // Simplified rook moves - just rank and file attacks
-        Bitboard attacks = (shift_north(square_bb[from]) | shift_south(square_bb[from]) |
-                          shift_east(square_bb[from]) | shift_west(square_bb[from])) & 
-                          (empty | enemies);
-        
-        while (attacks) {
-            Square to = pop_lsb(&attacks);
-            uint8_t flags = test_bit(enemies, to) ? CAPTURE : QUIET;
-            moves[*count] = make_move(from, to, flags);
-            (*count)++;
+        int deltas[4] = { 8, -8, 1, -1 };
+        for (int d = 0; d < 4; d++) {
+            int to = (int)from + deltas[d];
+            while (to >= 0 && to < 64) {
+                if (d >= 2) {
+                    int prev = to - deltas[d];
+                    int file_diff = (int)file_of((Square)to) - (int)file_of((Square)prev);
+                    if (file_diff != 1 && file_diff != -1) break;
+                }
+                if (test_bit(own, (Square)to)) break;
+                uint8_t flags = test_bit(enemies, (Square)to) ? CAPTURE : QUIET;
+                moves[*count] = make_move(from, (Square)to, flags);
+                (*count)++;
+                if (flags == CAPTURE) break;
+                to += deltas[d];
+            }
         }
     }
     
     return *count;
 }
 
-// Generate queen moves (simplified - would need proper ray generation)
+// Generate queen moves (sliding: rook + bishop)
 int generate_queen_moves(const Board* board, Move* moves, int* count) {
     Color color = board->side_to_move;
     Bitboard queens = board->pieces[color][QUEEN];
-    Bitboard empty = board->empty;
     Bitboard enemies = board_get_all_pieces(board, color_opposite(color));
+    Bitboard own = board_get_all_pieces(board, color);
     
     while (queens) {
         Square from = pop_lsb(&queens);
-        // Simplified queen moves - combination of bishop and rook
-        Bitboard attacks = (shift_northeast(square_bb[from]) | shift_northwest(square_bb[from]) |
-                          shift_southeast(square_bb[from]) | shift_southwest(square_bb[from]) |
-                          shift_north(square_bb[from]) | shift_south(square_bb[from]) |
-                          shift_east(square_bb[from]) | shift_west(square_bb[from])) & 
-                          (empty | enemies);
-        
-        while (attacks) {
-            Square to = pop_lsb(&attacks);
-            uint8_t flags = test_bit(enemies, to) ? CAPTURE : QUIET;
-            moves[*count] = make_move(from, to, flags);
-            (*count)++;
+        int deltas[8] = { 9, 7, -7, -9, 8, -8, 1, -1 };
+        for (int d = 0; d < 8; d++) {
+            int to = (int)from + deltas[d];
+            while (to >= 0 && to < 64) {
+                int prev = to - deltas[d];
+                // Diagonals and horizontals must step one file at a time
+                if (d < 4 || d >= 6) {
+                    int file_diff = (int)file_of((Square)to) - (int)file_of((Square)prev);
+                    if (file_diff != 1 && file_diff != -1) break;
+                }
+                if (test_bit(own, (Square)to)) break;
+                uint8_t flags = test_bit(enemies, (Square)to) ? CAPTURE : QUIET;
+                moves[*count] = make_move(from, (Square)to, flags);
+                (*count)++;
+                if (flags == CAPTURE) break;
+                to += deltas[d];
+            }
         }
     }
     
@@ -207,30 +225,42 @@ int generate_king_moves(const Board* board, Move* moves, int* count) {
             (*count)++;
         }
         
-        // Castling (simplified)
+        // Castling (with basic legality)
         if (color == WHITE) {
             if ((board->castling_rights & WHITE_KINGSIDE) && 
                 test_bit(empty, F1) && test_bit(empty, G1) &&
-                test_bit(board->pieces[WHITE][ROOK], H1)) {
+                test_bit(board->pieces[WHITE][ROOK], H1) &&
+                !board_is_square_attacked(board, E1, BLACK) &&
+                !board_is_square_attacked(board, F1, BLACK) &&
+                !board_is_square_attacked(board, G1, BLACK)) {
                 moves[*count] = make_move(E1, G1, KING_CASTLE);
                 (*count)++;
             }
             if ((board->castling_rights & WHITE_QUEENSIDE) && 
                 test_bit(empty, D1) && test_bit(empty, C1) &&
-                test_bit(board->pieces[WHITE][ROOK], A1)) {
+                test_bit(board->pieces[WHITE][ROOK], A1) &&
+                !board_is_square_attacked(board, E1, BLACK) &&
+                !board_is_square_attacked(board, D1, BLACK) &&
+                !board_is_square_attacked(board, C1, BLACK)) {
                 moves[*count] = make_move(E1, C1, QUEEN_CASTLE);
                 (*count)++;
             }
         } else {
             if ((board->castling_rights & BLACK_KINGSIDE) && 
                 test_bit(empty, F8) && test_bit(empty, G8) &&
-                test_bit(board->pieces[BLACK][ROOK], H8)) {
+                test_bit(board->pieces[BLACK][ROOK], H8) &&
+                !board_is_square_attacked(board, E8, WHITE) &&
+                !board_is_square_attacked(board, F8, WHITE) &&
+                !board_is_square_attacked(board, G8, WHITE)) {
                 moves[*count] = make_move(E8, G8, KING_CASTLE);
                 (*count)++;
             }
             if ((board->castling_rights & BLACK_QUEENSIDE) && 
                 test_bit(empty, D8) && test_bit(empty, C8) &&
-                test_bit(board->pieces[BLACK][ROOK], A8)) {
+                test_bit(board->pieces[BLACK][ROOK], A8) &&
+                !board_is_square_attacked(board, E8, WHITE) &&
+                !board_is_square_attacked(board, D8, WHITE) &&
+                !board_is_square_attacked(board, C8, WHITE)) {
                 moves[*count] = make_move(E8, C8, QUEEN_CASTLE);
                 (*count)++;
             }
@@ -240,12 +270,11 @@ int generate_king_moves(const Board* board, Move* moves, int* count) {
     return *count;
 }
 
-// Check if a move is legal
+// Check if a move is legal (does not leave own king in check)
 int is_legal_move(const Board* board, Move move) {
-    // Make the move on a temporary board
-    Board temp_board = *board;
-    board_make_move(&temp_board, move);
-    
-    // Check if the move leaves the king in check
-    return !board_is_check(&temp_board);
-} 
+    Board temp = *board;
+    Color moving = board->side_to_move;
+    board_make_move(&temp, move);
+    Square king_sq = lsb(temp.pieces[moving][KING]);
+    return !board_is_square_attacked(&temp, king_sq, color_opposite(moving));
+}

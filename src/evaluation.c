@@ -1,6 +1,14 @@
 #include "evaluation.h"
 #include "bitboard.h"
-#include "movegen.h"
+// movegen.h not required for evaluation here
+
+// Forward declaration
+static int evaluate_positional(const Board* board);
+static int evaluate_mobility(const Board* board);
+static int evaluate_pawn_structure(const Board* board);
+static int evaluate_king_safety(const Board* board);
+static int evaluate_bishop_pair(const Board* board);
+static int evaluate_rook_position(const Board* board);
 
 // Piece-square tables
 int pawn_table[64];
@@ -122,6 +130,19 @@ void init_evaluation_tables(void) {
     }
 }
 
+// Top-level evaluation
+int evaluate_position(const Board* board) {
+    int score = 0;
+    score += evaluate_material(board);
+    score += evaluate_positional(board);
+    score += evaluate_mobility(board);
+    score += evaluate_pawn_structure(board);
+    score += evaluate_king_safety(board);
+    score += evaluate_bishop_pair(board);
+    score += evaluate_rook_position(board);
+    return score;
+}
+
 // Evaluate material balance
 int evaluate_material(const Board* board) {
     int score = 0;
@@ -151,7 +172,7 @@ int evaluate_material(const Board* board) {
 }
 
 // Evaluate positional factors
-int evaluate_positional(const Board* board) {
+static int evaluate_positional(const Board* board) {
     int score = 0;
     
     for (Color c = WHITE; c < COLOR_COUNT; c++) {
@@ -204,7 +225,7 @@ int evaluate_positional(const Board* board) {
 }
 
 // Evaluate piece mobility
-int evaluate_mobility(const Board* board) {
+static int evaluate_mobility(const Board* board) {
     int score = 0;
     
     for (Color c = WHITE; c < COLOR_COUNT; c++) {
@@ -237,7 +258,7 @@ int evaluate_mobility(const Board* board) {
 }
 
 // Evaluate pawn structure
-int evaluate_pawn_structure(const Board* board) {
+static int evaluate_pawn_structure(const Board* board) {
     int score = 0;
     
     for (Color c = WHITE; c < COLOR_COUNT; c++) {
@@ -272,7 +293,7 @@ int evaluate_pawn_structure(const Board* board) {
 }
 
 // Evaluate king safety
-int evaluate_king_safety(const Board* board) {
+static int evaluate_king_safety(const Board* board) {
     int score = 0;
     
     for (Color c = WHITE; c < COLOR_COUNT; c++) {
@@ -301,7 +322,7 @@ int evaluate_king_safety(const Board* board) {
 }
 
 // Evaluate bishop pair
-int evaluate_bishop_pair(const Board* board) {
+static int evaluate_bishop_pair(const Board* board) {
     int score = 0;
     
     for (Color c = WHITE; c < COLOR_COUNT; c++) {
@@ -317,7 +338,7 @@ int evaluate_bishop_pair(const Board* board) {
 }
 
 // Evaluate rook position
-int evaluate_rook_position(const Board* board) {
+static int evaluate_rook_position(const Board* board) {
     int score = 0;
     
     for (Color c = WHITE; c < COLOR_COUNT; c++) {
@@ -333,30 +354,8 @@ int evaluate_rook_position(const Board* board) {
             if ((c == WHITE && r == RANK_7) || (c == BLACK && r == RANK_2)) {
                 score += color_multiplier * ROOK_7TH_RANK_WEIGHT;
             }
-            
-            // Bonus for rook on open/semi-open files
-            Bitboard file_pawns = board->pieces[WHITE][PAWN] | board->pieces[BLACK][PAWN];
-            Bitboard this_file = file_bb[f];
-            if (!(file_pawns & this_file)) {
-                score += color_multiplier * ROOK_OPEN_FILE_WEIGHT;
-            }
         }
     }
     
     return score;
 }
-
-// Main evaluation function
-int evaluate_position(const Board* board) {
-    int material_score = evaluate_material(board);
-    int positional_score = evaluate_positional(board);
-    int mobility_score = evaluate_mobility(board);
-    int pawn_structure_score = evaluate_pawn_structure(board);
-    int king_safety_score = evaluate_king_safety(board);
-    int bishop_pair_score = evaluate_bishop_pair(board);
-    int rook_position_score = evaluate_rook_position(board);
-    
-    return material_score + positional_score + mobility_score + 
-           pawn_structure_score + king_safety_score + bishop_pair_score + 
-           rook_position_score;
-} 

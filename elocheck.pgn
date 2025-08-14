@@ -1,0 +1,35 @@
+[Event "Chess engine testing"]
+[Site "WCCC 2025"]
+[Date "2025.08.12"]
+[Round "?"]
+[White "Chess_engine"]
+[Black "Chess_engine"]
+[Result "0-1"]
+[BlackElo "2592"]
+[ECO "A00"]
+[Opening "Ware (Meadow Hay) Opening"]
+[Time "17:21:18"]
+[WhiteElo "2592"]
+[TimeControl "300"]
+[Termination "rules infraction"]
+[PlyCount "44"]
+[WhiteType "program"]
+[BlackType "program"]
+
+1. a4 {(a2-a4) 0.00/6 0} a5 {(a7-a5) 0.00/6 0} 2. b4 {(b2-b4) 0.00/6 0}
+axb4 {(a5xb4) 0.00/6 0} 3. c4 {(c2-c4) 0.00/6 0} Rxa4 {(Ra8xa4) 0.00/6 0}
+4. Rxa4 {(Ra1xa4) 0.00/6 0} b3 {(b4-b3) 0.00/6 0} 5. d4 {(d2-d4) 0.00/6 0}
+b2 {(b3-b2) 0.00/6 0} 6. Bxb2 {(Bc1xb2) 0.00/6 0} b5 {(b7-b5) 0.00/6 0} 7.
+cxb5 {(c4xb5) 0.00/6 0} c5 {(c7-c5) 0.00/6 0} 8. dxc5 {(d4xc5) 0.00/6 0} d5
+{(d7-d5) 0.00/6 0} 9. Bxg7 {(Bb2xg7) 0.00/6 0} Bxg7 {(Bf8xg7) 0.00/6 0} 10.
+e4 {(e2-e4) 0.00/6 0} dxe4 {(d5xe4) 0.00/6 0} 11. Qxd8+ {(Qd1xd8+) 0.00/6
+0} Kxd8 {(e4-e3) 0.00/6 0} 12. Rxe4 {(Ra4xe4) 0.00/6 0} e5 {(e7-e5) 0.00/6
+0} 13. Rxe5 {(Re4xe5) 0.00/6 0} Bxe5 {(Bg7xe5) 0.00/6 0} 14. f4 {(f2-f4)
+0.00/6 0} Bxf4 {(Be5xf4) 0.00/6 0} 15. g4 {(g2-g4) 0.00/6 0} Bxh2 {(Bf4xh2)
+0.00/6 0} 16. Rxh2 {(Rh1xh2) 0.00/6 0} Bxg4 {(Bc8xg4) 0.00/6 0} 17. Rxh7
+{(Rh2xh7) 0.00/6 0} Rxh7 {(Rh8xh7) 0.00/6 0} 18. b6 {(b5-b6) 0.00/6 0} f5
+{(f7-f5) 0.00/6 0} 19. c6 {(c5-c6) 0.00/6 0} f4 {(f5-f4) 0.00/6 0} 20. b7
+{(b6-b7) 0.00/6 0} Rxb7 {(Rh7xb7) 0.00/6 0} 21. cxb7 {(c6xb7) 0.00/6 0} f3
+{(f4-f3) 0.00/6 0} 22. Nd2 {(Nb1-d2) 0.00/6 0} f2 {(f3-f2+) 0.00/6 0  Arena
+Adjudication. Illegal move!} 0-1
+

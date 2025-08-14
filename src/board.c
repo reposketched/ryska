@@ -1,7 +1,11 @@
 #include "board.h"
+#include "uci.h"
+#include "movegen.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <math.h>
 
 // Initialize board to starting position
 void board_init(Board* board) {
@@ -199,10 +203,11 @@ void board_make_move(Board* board, Move move) {
         for (PieceType pt = PAWN; pt < PIECE_COUNT; pt++)
             board->occupied |= board->pieces[c][pt];
     board->empty = ~board->occupied;
-    if (is_double_pawn_push(move))
+    if (is_double_pawn_push(move)) {
         board->en_passant = (color == WHITE) ? (Square)(from + 8) : (Square)(from - 8);
-    else
+    } else {
         board->en_passant = A1;
+    }
     if (piece == KING) {
         if (color == WHITE) board->castling_rights &= ~(WHITE_KINGSIDE | WHITE_QUEENSIDE);
         else board->castling_rights &= ~(BLACK_KINGSIDE | BLACK_QUEENSIDE);
@@ -215,10 +220,18 @@ void board_make_move(Board* board, Move move) {
             if (from == H8) board->castling_rights &= ~BLACK_KINGSIDE;
         }
     }
+    // Lose castling rights if rook captured
+    if (is_capture(move)) {
+        if (to == A1) board->castling_rights &= ~WHITE_QUEENSIDE;
+        if (to == H1) board->castling_rights &= ~WHITE_KINGSIDE;
+        if (to == A8) board->castling_rights &= ~BLACK_QUEENSIDE;
+        if (to == H8) board->castling_rights &= ~BLACK_KINGSIDE;
+    }
     if (piece == PAWN || is_capture(move)) board->halfmove_clock = 0;
     else board->halfmove_clock++;
     if (board->side_to_move == BLACK) board->fullmove_number++;
     board->side_to_move = color_opposite(board->side_to_move);
+    // Debug printing removed for performance
 }
 
 void board_undo_move(Board* board, Move move) {
@@ -226,21 +239,29 @@ void board_undo_move(Board* board, Move move) {
 }
 
 int board_is_check(const Board* board) {
-    Square king_sq = lsb(board->pieces[board->side_to_move][KING]);
-    return board_is_square_attacked(board, king_sq, color_opposite(board->side_to_move));
+    Color stm = board->side_to_move;
+    Square king_sq = lsb(board->pieces[stm][KING]);
+    return board_is_square_attacked(board, king_sq, color_opposite(stm));
 }
 
 int board_is_checkmate(const Board* board) {
     if (!board_is_check(board)) return 0;
     Move moves[256];
-    int move_count = 0; // Not implemented: should call generate_moves
-    return move_count == 0;
+    int count = generate_moves(board, moves);
+    for (int i = 0; i < count; i++) {
+        if (is_legal_move(board, moves[i])) return 0;
+    }
+    return 1;
 }
 
 int board_is_stalemate(const Board* board) {
     if (board_is_check(board)) return 0;
-    int move_count = 0; // Not implemented: should call generate_moves
-    return move_count == 0;
+    Move moves[256];
+    int count = generate_moves(board, moves);
+    for (int i = 0; i < count; i++) {
+        if (is_legal_move(board, moves[i])) return 0;
+    }
+    return 1;
 }
 
 int board_is_legal_move(const Board* board, Move move) {
@@ -280,13 +301,50 @@ int board_is_square_occupied(const Board* board, Square sq) {
 }
 
 int board_is_square_attacked(const Board* board, Square sq, Color by_color) {
-    // Pawn attacks
-    if (pawn_attacks[by_color][sq] & board->pieces[by_color][PAWN]) return 1;
+    // Pawn attacks: use reverse perspective
+    if (pawn_attacks[color_opposite(by_color)][sq] & board->pieces[by_color][PAWN]) return 1;
     // Knight attacks
     if (knight_attacks[sq] & board->pieces[by_color][KNIGHT]) return 1;
     // King attacks
     if (king_attacks[sq] & board->pieces[by_color][KING]) return 1;
-    // Sliding pieces not implemented
+
+    Bitboard occupied = board->occupied;
+    // Bishop/Queen diagonals
+    int diag_deltas[4] = { 9, 7, -7, -9 };
+    for (int d = 0; d < 4; d++) {
+        int to = (int)sq + diag_deltas[d];
+        while (to >= 0 && to < 64) {
+            int prev = to - diag_deltas[d];
+            if (abs(file_of((Square)to) - file_of((Square)prev)) != 1) break;
+            if (test_bit(occupied, (Square)to)) {
+                if (test_bit(board->pieces[by_color][BISHOP], (Square)to) ||
+                    test_bit(board->pieces[by_color][QUEEN], (Square)to)) {
+                    return 1;
+                }
+                break;
+            }
+            to += diag_deltas[d];
+        }
+    }
+    // Rook/Queen straight lines
+    int ortho_deltas[4] = { 8, -8, 1, -1 };
+    for (int d = 0; d < 4; d++) {
+        int to = (int)sq + ortho_deltas[d];
+        while (to >= 0 && to < 64) {
+            if (d >= 2) {
+                int prev = to - ortho_deltas[d];
+                if (abs(file_of((Square)to) - file_of((Square)prev)) != 1) break;
+            }
+            if (test_bit(occupied, (Square)to)) {
+                if (test_bit(board->pieces[by_color][ROOK], (Square)to) ||
+                    test_bit(board->pieces[by_color][QUEEN], (Square)to)) {
+                    return 1;
+                }
+                break;
+            }
+            to += ortho_deltas[d];
+        }
+    }
     return 0;
 }
 
